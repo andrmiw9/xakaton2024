@@ -12,3 +12,5 @@ venv/
 *.xml
 *.iml
 *.pyc
+
+utils/user_settings.py  # игнорируем настройки пользователей
