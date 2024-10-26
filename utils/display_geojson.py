@@ -7,9 +7,9 @@ pip install matplotlib (for plot)
 import geopandas as gpd
 import matplotlib.pyplot as plt
 
-from user_settings import geojson_file_path
+from user_settings import GJ_FILE
 
-gdf = gpd.read_file(geojson_file_path)  # load data
+gdf = gpd.read_file(GJ_FILE)  # load data
 
 # print(gdf.head())
 # print(type(gdf))
