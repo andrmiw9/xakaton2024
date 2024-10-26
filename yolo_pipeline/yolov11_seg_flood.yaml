@@ -1,0 +1,7 @@
+path: D:/hack2024/pfo/dataset_off/data_yolo-dataset-SNIR/  # Base dataset directory
+train: train/images/  # Relative to 'path', contains training images
+val: val/images/      # Relative to 'path', contains validation images
+
+names:
+  0: background
+  1: water
