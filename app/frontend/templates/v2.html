@@ -37,6 +37,9 @@
                 const imgElement = document.getElementById('uploadedImage');
                 imgElement.src = result.image_url; // Устанавливаем URL изображения
                 imgElement.style.display = 'block'; // Показываем изображение
+                imgElement.style.margin = '0 auto'; // Центрируем изображение
+                imgElement.style.maxWidth = '80%'; // Ограничиваем максимальную ширину изображения
+                imgElement.style.height = 'auto'; // Высота автоматически подстраивается для сохранения пропорций
             }
         } catch (error) {
             console.error('Ошибка загрузки:', error);
