@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Загрузка изображения</title>
+</head>
+<body style="text-align: center">
+<h1>Загрузите изображение</h1>
+<form action="/upload" method="post" enctype="multipart/form-data">
+    <label for="file">Выберите файл:</label>
+    <input type="file" id="file" name="file" accept="image/*" required>
+    <button type="submit">Загрузить</button>
+</form>
+
+<div id="result"></div>
+
+<script>
+    const form = document.querySelector('form');
+    form.onsubmit = async (event) => {
+        event.preventDefault(); // предотвращаем стандартное поведение формы
+        const formData = new FormData(form);
+        const response = await fetch('/run_neuro', {
+            method: 'POST',
+            body: formData
+        });
+        const result = await response.json();
+        document.getElementById('result').innerText = `\n\nФайл: ${result.filename}, Сообщение: ${result.message}`;
+    };
+</script>
+</body>
+</html>

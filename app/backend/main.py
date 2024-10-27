@@ -7,7 +7,7 @@ import uvicorn
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from loguru import logger
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import FileResponse, JSONResponse
 
 from app.backend.config import get_settings
 from app.backend.settings_model import Settings
@@ -64,13 +64,18 @@ def normal_app() -> FastAPI:
         return JSONResponse(content=response,
                             status_code=200)
 
-    @fastapi_app.post("/upload")
+    @fastapi_app.post("/run_neuro")
     async def upload_image(file: UploadFile = File(...)):
         """ Ручка для посылки изображения на обработку нейросетью """
         # with open(f"uploads/{file.filename}", "wb") as buffer:
         #     shutil.copyfileobj(file.file, buffer)
 
         return {"filename": file.filename, "message": "Image uploaded successfully!"}
+
+    @fastapi_app.get("/upload")
+    async def upload_image():
+        """ Ручка для посылки изображения на обработку нейросетью """
+        return FileResponse('../frontend/templates/v1.html')
 
     @fastapi_app.get("/config")
     async def config() -> Settings:
