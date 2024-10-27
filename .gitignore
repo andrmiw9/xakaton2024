@@ -14,3 +14,10 @@ venv/
 *.pyc
 
 utils/user_settings.py  # игнорируем настройки пользователей
+
+
+# Игнорировать все .toml файлы
+*.toml
+
+# Не игнорировать config_example.toml
+!app/backend/configs/config_example.toml

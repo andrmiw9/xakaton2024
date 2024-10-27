@@ -1,0 +1,5 @@
+[app]
+env_mode = 'TEST'
+
+[logger]
+log_level = 1

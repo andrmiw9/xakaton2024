@@ -1,0 +1,3 @@
+fastapi
+loguru
+python-multipart   # for image upload
