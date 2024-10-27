@@ -79,7 +79,7 @@ def normal_app() -> FastAPI:
         # return FileResponse('../frontend/templates/v1.html')
         # _path = os.path.join(os.getcwd(), r'app\backend\frontend\templates\v1.html')
         # logger.trace(f'path: {_path}')
-        return FileResponse('/app/frontend/templates/v1.html')
+        return FileResponse('app/frontend/templates/v1.html')
 
     @fastapi_app.get("/config")
     async def config() -> Settings:
