@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 import loguru
 import uvicorn
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from loguru import logger
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -71,6 +71,17 @@ def normal_app() -> FastAPI:
         #     shutil.copyfileobj(file.file, buffer)
 
         return {"filename": file.filename, "message": "Image uploaded successfully!"}
+
+    @fastapi_app.get("/config")
+    async def config() -> Settings:
+        """ Returns all settings of service. Work in TEST env_mode only! """
+
+        if settings.env_mode == 'TEST':
+            return settings
+        else:
+            msg = f'Unauthorized access to config'
+            logger.warning(msg)
+            raise HTTPException(status_code=403, detail=msg)  # 403 Forbidden
 
     @fastapi_app.exception_handler(404)
     async def custom_404_handler(request: Request, _):
