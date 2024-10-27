@@ -5,7 +5,7 @@
 """
 
 import os
-import tomllib  # parse toml config
+import tomli  # parse toml config
 from functools import cache  # @cache decorator
 
 from app.backend import constants
@@ -55,7 +55,8 @@ def load_toml(config_path: str, use_env: bool = False) -> dict:
     print(f"Использую конфигурационный файл: {config_path}")
     config = {}
     with open(config_path, mode='rb') as f:  # binary mode is required for TOML, but it may be unsafe
-        data = tomllib.load(f)
+        # data = tomllib.load(f)    # 3.11+ python
+        data = tomli.load(f)  # 3.10 python
         # print("LOADED TOML", f"data: {data}")
         if data is None or len(data) == 0:
             raise ConfigError('Empty config!')

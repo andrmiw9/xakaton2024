@@ -1,3 +1,5 @@
+tomli
+uvicorn
 fastapi
 loguru
 python-multipart   # for image upload
