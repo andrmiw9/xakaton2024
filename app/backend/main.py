@@ -1,6 +1,7 @@
 """ Основной файл запуска FastAPI """
 
 import cv2
+import rasterio
 import shutil
 
 import os
@@ -11,6 +12,7 @@ from datetime import datetime, timedelta
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
+from matplotlib import pyplot as plt
 from starlette.requests import Request
 from starlette.responses import FileResponse, JSONResponse
 from starlette.staticfiles import StaticFiles
@@ -93,8 +95,140 @@ def normal_app() -> FastAPI:
         return JSONResponse(content=response,
                             status_code=200)
 
+    def tiff_to_tensor(tif_path, max=5000):
+        """
+        Читает все каналы из файла.
+        Обрезает верхнюю границу значений пикселей.
+        Нормализация по текущему изображению.
+
+        Parameters:
+        - tif_path: Путь до изображения.
+        - max (5000): Порог яркости.
+
+        Returns:
+        - torch.Tensor: Обработанное изображение.
+        """
+        with rasterio.open(tif_path) as src:
+            # Читаем все каналы изображения и преобразуем в numpy-массив
+            img_array = src.read()  # Получаем массив с форматом (channels, height, width)
+        img_tensor = torch.from_numpy(img_array).float()
+        img_tensor = torch.clamp(img_tensor, max=max)
+        img_tensor = (img_tensor - 0) / (max - 0)
+        return img_tensor
+
+    def plot_channels(img_tensor, rgb=None, save_path='output_image.png'):
+        """
+        Визуализирует выбранные каналы тензора изображения.
+
+        Parameters:
+        - img_tensor (torch.Tensor): Тензор изображения с форматом (channels, height, width).
+        - rgb (list of int): Индексы каналов, которые нужно визуализировать. По умолчанию [2, 1, 0].
+        - save_path (str): Путь для сохранения выходного изображения.
+
+        """
+        # Проверяем, что в img_tensor достаточно каналов
+        if rgb is None:
+            rgb = [2, 1, 0]
+
+        assert img_tensor.shape[0] > max(rgb), "Выбранные каналы отсутствуют в тензоре"
+
+        # Извлекаем три выбранных канала и конвертируем их в numpy
+        selected_channels = img_tensor[rgb].numpy()
+
+        # Транспонируем из (channels, height, width) в (height, width, channels)
+        if selected_channels.shape[0] == 3:
+            selected_channels = selected_channels.transpose(1, 2, 0)
+        else:
+            raise ValueError("Должно быть выбрано ровно 3 канала для RGB изображения")
+
+        # Отображаем изображение
+        plt.figure(figsize=(20, 16))
+        plt.imshow(selected_channels)
+        plt.axis('off')
+        plt.savefig(save_path)  # Сохраняем изображение
+        # plt.show()
+
+    # @fastapi_app.post("/run_neuro")
+    # async def run_neuro(file: UploadFile = File(...)):
+    #     """ Ручка для посылки изображения на обработку нейросетью """
+    #
+    #     try:
+    #         file_path = os.path.join('uploads/', file.filename)
+    #         with open(file_path, "wb") as buffer:
+    #             shutil.copyfileobj(file.file, buffer)
+    #
+    #         # if os.name == 'nt':  # WINDOWS
+    #         #     model = YOLO('best.pt')
+    #         # else:  # UNIX
+    #         #     model = YOLO('/home/user1/xakaton2024/yolo_pipeline/runs/segment/train3/weights/best.pt')
+    #         #
+    #         # # path = '/home/user1/xakaton2024/data/test_data/test_data_rgb/'
+    #         #
+    #         # results = model(file_path, save=True, save_txt=False, stream=True, retina_masks=True, conf=0.3, iou=0.8)
+    #         #
+    #         # for i, res in enumerate(results):
+    #         #     for r in res:
+    #         #         try:
+    #         #             r = r[0]
+    #         #             masks = r.masks.data
+    #         #             boxes = r.boxes.data
+    #         #
+    #         #             # extract classes
+    #         #             clss = boxes[:, 5]
+    #         #
+    #         #             # get indices of results where class is 0 (people in COCO)
+    #         #             _indices = torch.where(clss == 1)
+    #         #
+    #         #             # use these indices to extract the relevant masks
+    #         #             _masks = masks[_indices]
+    #         #
+    #         #             # scale for visualizing results
+    #         #             _masks = torch.any(_masks, dim=0).int() * 255
+    #         #
+    #         #             # cv2.imshow(_masks.cpu().numpy())
+    #         #             # Преобразуем тензор в NumPy массив и отображаем его
+    #         #             masks_np = _masks.cpu().numpy()
+    #         #
+    #         #             # Проверяем размерность и добавляем размерность канала, если необходимо
+    #         #             if masks_np.ndim == 2:
+    #         #                 masks_np = np.expand_dims(masks_np, axis=-1)  # Добавляем размерность для канала
+    #         #
+    #         #             # # Отображаем маску
+    #         #             # cv2.imshow(f'Mask {i}', masks_np)  # Передаем имя окна и массив изображения
+    #         #
+    #         #             mask_filename = f'mask_{file.filename}'
+    #         #             mask_path = os.path.join('masks/', mask_filename)
+    #         #             cv2.imwrite(mask_path, masks_np)  # Сохраняем маску
+    #         #
+    #         #             mask_url = f"/masks/{mask_filename}"  # URL для
+    #         #
+    #         #         except Exception as e:
+    #         #             logger.warning(f'WARN: {repr(e)}')
+    #         #             h, w = imagesize.get(file_path)
+    #         #
+    #         #             # black_mask_rgb = np.zeros((w, h), dtype=np.uint8)
+    #         #             black_mask_rgb = np.zeros((h, w), dtype=np.uint8)
+    #         #             # cv2.imshow(black_mask_rgb)
+    #         #
+    #         #             # Создаем черную маску RGB
+    #         #             # black_mask_rgb = np.zeros((h, w, 3), dtype=np.uint8)  # Изменено на (h, w, 3) для RGB
+    #         #             cv2.imshow(f'Black Mask {i}', black_mask_rgb)  # Передаем имя окна для черной маски
+    #
+    #         tensor = tiff_to_tensor(file_path)
+    #         plot_channels(tensor)
+    #
+    #         return {
+    #             "filename": file.filename,
+    #             "result": "ok",
+    #             "message": "Image uploaded successfully!",
+    #             "image_url": f"/uploads/{file.filename}"  # URL для доступа к изображению
+    #         }
+    #
+    #     except Exception as e:
+    #         return {"filename": file.filename, "result": "error", "message": repr(e)}
+
     @fastapi_app.post("/run_neuro")
-    async def run_neuro(file: UploadFile = File(...)):
+    async def upload_image(file: UploadFile = File(...)):
         """ Ручка для посылки изображения на обработку нейросетью """
 
         try:
@@ -102,80 +236,33 @@ def normal_app() -> FastAPI:
             with open(file_path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
 
-            if os.name == 'nt':  # WINDOWS
-                model = YOLO('best.pt')
-            else:  # UNIX
-                model = YOLO('/home/user1/xakaton2024/yolo_pipeline/runs/segment/train3/weights/best.pt')
+            tensor = tiff_to_tensor(file_path)
+            mask_path = plot_channels(tensor)  # Предположим, вы получаете путь к маске
 
-            # path = '/home/user1/xakaton2024/data/test_data/test_data_rgb/'
-
-            results = model(file_path, save=True, save_txt=False, stream=True, retina_masks=True, conf=0.3, iou=0.8)
-
-            for i, res in enumerate(results):
-                for r in res:
-                    try:
-                        r = r[0]
-                        masks = r.masks.data
-                        boxes = r.boxes.data
-
-                        # extract classes
-                        clss = boxes[:, 5]
-
-                        # get indices of results where class is 0 (people in COCO)
-                        _indices = torch.where(clss == 1)
-
-                        # use these indices to extract the relevant masks
-                        _masks = masks[_indices]
-
-                        # scale for visualizing results
-                        _masks = torch.any(_masks, dim=0).int() * 255
-
-                        # cv2.imshow(_masks.cpu().numpy())
-                        # Преобразуем тензор в NumPy массив и отображаем его
-                        masks_np = _masks.cpu().numpy()
-
-                        # Проверяем размерность и добавляем размерность канала, если необходимо
-                        if masks_np.ndim == 2:
-                            masks_np = np.expand_dims(masks_np, axis=-1)  # Добавляем размерность для канала
-
-                        # # Отображаем маску
-                        # cv2.imshow(f'Mask {i}', masks_np)  # Передаем имя окна и массив изображения
-
-                        mask_filename = f'mask_{file.filename}'
-                        mask_path = os.path.join('masks/', mask_filename)
-                        cv2.imwrite(mask_path, masks_np)  # Сохраняем маску
-
-                        mask_url = f"/masks/{mask_filename}"  # URL для
-
-                    except Exception as e:
-                        logger.warning(f'WARN: {repr(e)}')
-                        h, w = imagesize.get(file_path)
-
-                        black_mask_rgb = np.zeros((w, h), dtype=np.uint8)
-                        # cv2.imshow(black_mask_rgb)
-
-                        # Создаем черную маску RGB
-                        # black_mask_rgb = np.zeros((h, w, 3), dtype=np.uint8)  # Изменено на (h, w, 3) для RGB
-                        cv2.imshow(f'Black Mask {i}', black_mask_rgb)  # Передаем имя окна для черной маски
+            # return {"filename": file.filename, "result": "ok", "message": "Image uploaded successfully!",
+            #         "image_url": mask_path}
 
             return {
                 "filename": file.filename,
                 "result": "ok",
                 "message": "Image uploaded successfully!",
-                "image_url": f"/uploads/{file.filename}"  # URL для доступа к изображению
+                "image_url": f"/uploads/{file.filename}",  # URL для оригинального изображения
+                "mask_url": f"/masks/{os.path.basename(mask_path)}"  # URL для маски
             }
 
         except Exception as e:
-            return {"filename": file.filename, "result": "error", "message": repr(e)}
+            return {"result": "error", "message": repr(e)}
 
     @fastapi_app.get("/upload")
     async def upload_image():
         """ Ручка для посылки изображения на обработку нейросетью """
 
         if os.name == 'nt':  # WINDOWS
-            _path = '../frontend/templates/v2.html'
+            # _path = '../frontend/templates/v2.html'
+            _path = '../frontend/templates/v3.html'
         else:  # UNIX
-            _path = 'app/frontend/templates/v2.html'
+            # _path = 'app/frontend/templates/v2.html'
+            _path = 'app/frontend/templates/v3.html'
         logger.trace(f'using path: {_path}')
         return FileResponse(_path)
 

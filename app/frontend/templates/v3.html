@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Загрузка изображения</title>
+</head>
+<body style="text-align: center">
+<h1>Загрузите изображение</h1>
+<form id="uploadForm" enctype="multipart/form-data">
+    <input type="file" id="imageInput" name="file" accept="image/*" required>
+    <button type="submit">Загрузить</button>
+</form>
+
+<div id="result"></div>
+<img id="uploadedImage" style="display:none; margin-top: 20px;"/>
+<img id="maskImage" style="display:none; margin-top: 20px;"/> <!-- Для отображения маски -->
+
+<script>
+    document.getElementById('uploadForm').onsubmit = async (event) => {
+        event.preventDefault(); // предотвращаем стандартное поведение формы
+        const formData = new FormData();
+        const fileInput = document.getElementById('imageInput');
+        formData.append('file', fileInput.files[0]);
+
+        try {
+            const response = await fetch('/run_neuro', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            // Отображаем результат
+            document.getElementById('result').innerText = `Файл: ${result.filename}, Сообщение: ${result.message}`;
+
+            // Отображаем загруженное изображение
+            if (result.result === "ok") {
+                const imgElement = document.getElementById('uploadedImage');
+                imgElement.src = result.image_url; // Устанавливаем URL изображения
+                imgElement.style.display = 'block'; // Показываем изображение
+
+                // Запрашиваем маску и отображаем её
+                const maskImgElement = document.getElementById('maskImage');
+                maskImgElement.src = result.image_url; // Устанавливаем URL маски
+                maskImgElement.style.display = 'block'; // Показываем маску
+            }
+        } catch (error) {
+            console.error('Ошибка загрузки:', error);
+            document.getElementById('result').innerText = 'Произошла ошибка при загрузке изображения.';
+        }
+    };
+</script>
+</body>
+</html>
