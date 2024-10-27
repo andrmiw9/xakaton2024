@@ -102,7 +102,7 @@ def normal_app() -> FastAPI:
         """ Ручка для посылки изображения на обработку нейросетью """
         # _path = '../frontend/templates/v2.html'
         # _path = os.path.join(os.getcwd(), r'app\backend\frontend\templates\v1.html')
-        _path = 'app/frontend/templates/v1.html'
+        _path = 'app/frontend/templates/v2.html'
         logger.trace(f'path: {_path}')
         return FileResponse(_path)
 
