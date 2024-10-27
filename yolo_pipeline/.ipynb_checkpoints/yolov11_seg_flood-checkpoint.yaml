@@ -1,0 +1,16 @@
+path: /home/user1/xakaton2024/data/yolo_split_dataset_NIR/ # Base dataset directory
+train: train/images/  # Relative to 'path', contains training images
+val: val/images/      # Relative to 'path', contains validation images
+
+names:
+  0: background
+  1: water
+
+augmentations:
+
+    translate: 0.1  # image translation (+/- fraction)
+    scale: 0.2  # image scale (+/- gain)
+    shear: 0.2  # image shear (+/- deg) from -0.5 to 0.5
+    perspective: 0.1  # image perspective (+/- fraction), range 0-0.001
+    flipud: 0.7  # image flip up-down (probability)
+    fliplr: 0.5  # image flip left-right (probability)
