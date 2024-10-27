@@ -1,4 +1,6 @@
 """ Основной файл запуска FastAPI """
+
+import cv2
 import shutil
 
 import os
@@ -12,10 +14,17 @@ from loguru import logger
 from starlette.requests import Request
 from starlette.responses import FileResponse, JSONResponse
 from starlette.staticfiles import StaticFiles
+from starlette.templating import Jinja2Templates
 
 from app.backend.config import get_settings
 from app.backend.settings_model import Settings
 from app.backend.utils import logger_set_up
+
+from ultralytics import YOLO
+import torch
+import os
+import numpy as np
+import imagesize
 
 
 def normal_app() -> FastAPI:
@@ -43,6 +52,13 @@ def normal_app() -> FastAPI:
         return response
 
     fastapi_app.mount("/uploads", StaticFiles(directory='uploads'), name="uploads")
+
+
+    if os.name == 'nt':  # WINDOWS
+        templates_dir = '../frontend/templates/'
+    else:  # UNIX
+        templates_dir = 'app/frontend/templates/'
+    templates_dir = Jinja2Templates(directory="templates")
 
     fastapi_app.add_middleware(
         CORSMiddleware,
@@ -87,6 +103,62 @@ def normal_app() -> FastAPI:
             with open(file_path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
 
+            if os.name == 'nt':  # WINDOWS
+                model = YOLO('best.pt')
+            else:  # UNIX
+                model = YOLO('/home/user1/xakaton2024/yolo_pipeline/runs/segment/train3/weights/best.pt')
+
+            # path = '/home/user1/xakaton2024/data/test_data/test_data_rgb/'
+
+            results = model(file_path, save=True, save_txt=False, stream=True, retina_masks=True, conf=0.3, iou=0.8)
+
+            for i, res in enumerate(results):
+                for r in res:
+                    try:
+                        r = r[0]
+                        masks = r.masks.data
+                        boxes = r.boxes.data
+
+                        # extract classes
+                        clss = boxes[:, 5]
+
+                        # get indices of results where class is 0 (people in COCO)
+                        _indices = torch.where(clss == 1)
+
+                        # use these indices to extract the relevant masks
+                        _masks = masks[_indices]
+
+                        # scale for visualizing results
+                        _masks = torch.any(_masks, dim=0).int() * 255
+
+                        # cv2.imshow(_masks.cpu().numpy())
+                        # Преобразуем тензор в NumPy массив и отображаем его
+                        masks_np = _masks.cpu().numpy()
+
+                        # Проверяем размерность и добавляем размерность канала, если необходимо
+                        if masks_np.ndim == 2:
+                            masks_np = np.expand_dims(masks_np, axis=-1)  # Добавляем размерность для канала
+
+                        # # Отображаем маску
+                        # cv2.imshow(f'Mask {i}', masks_np)  # Передаем имя окна и массив изображения
+
+                        mask_filename = f'mask_{file.filename}'
+                        mask_path = os.path.join('masks/', mask_filename)
+                        cv2.imwrite(mask_path, masks_np)  # Сохраняем маску
+
+                        mask_url = f"/masks/{mask_filename}"  # URL для
+
+                    except Exception as e:
+                        logger.warning(f'WARN: {repr(e)}')
+                        h, w = imagesize.get(file_path)
+
+                        black_mask_rgb = np.zeros((w, h), dtype=np.uint8)
+                        # cv2.imshow(black_mask_rgb)
+
+                        # Создаем черную маску RGB
+                        # black_mask_rgb = np.zeros((h, w, 3), dtype=np.uint8)  # Изменено на (h, w, 3) для RGB
+                        cv2.imshow(f'Black Mask {i}', black_mask_rgb)  # Передаем имя окна для черной маски
+
             return {
                 "filename": file.filename,
                 "result": "ok",
@@ -100,10 +172,12 @@ def normal_app() -> FastAPI:
     @fastapi_app.get("/upload")
     async def upload_image():
         """ Ручка для посылки изображения на обработку нейросетью """
-        # _path = '../frontend/templates/v2.html'
-        # _path = os.path.join(os.getcwd(), r'app\backend\frontend\templates\v1.html')
-        _path = 'app/frontend/templates/v2.html'
-        logger.trace(f'path: {_path}')
+
+        if os.name == 'nt':  # WINDOWS
+            _path = '../frontend/templates/v2.html'
+        else:  # UNIX
+            _path = 'app/frontend/templates/v2.html'
+        logger.trace(f'using path: {_path}')
         return FileResponse(_path)
 
     @fastapi_app.get("/config")
