@@ -53,7 +53,6 @@ def normal_app() -> FastAPI:
 
     fastapi_app.mount("/uploads", StaticFiles(directory='uploads'), name="uploads")
 
-
     if os.name == 'nt':  # WINDOWS
         templates_dir = '../frontend/templates/'
     else:  # UNIX
@@ -95,7 +94,7 @@ def normal_app() -> FastAPI:
                             status_code=200)
 
     @fastapi_app.post("/run_neuro")
-    async def upload_image(file: UploadFile = File(...)):
+    async def run_neuro(file: UploadFile = File(...)):
         """ Ручка для посылки изображения на обработку нейросетью """
 
         try:
