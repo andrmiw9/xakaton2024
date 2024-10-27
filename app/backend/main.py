@@ -1,14 +1,17 @@
 """ Основной файл запуска FastAPI """
-import os.path
+import shutil
 
-from datetime import datetime, timedelta
+import os
 
 import loguru
 import uvicorn
+from datetime import datetime, timedelta
 from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 from starlette.requests import Request
 from starlette.responses import FileResponse, JSONResponse
+from starlette.staticfiles import StaticFiles
 
 from app.backend.config import get_settings
 from app.backend.settings_model import Settings
@@ -39,6 +42,16 @@ def normal_app() -> FastAPI:
         logger.trace(f'Request time took {process_time} seconds')
         return response
 
+    fastapi_app.mount("/uploads", StaticFiles(directory='uploads'), name="uploads")
+
+    fastapi_app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"]
+    )
+
     @fastapi_app.get("/")
     async def root() -> JSONResponse:  #
         """ Standard Hello World route """
@@ -68,18 +81,30 @@ def normal_app() -> FastAPI:
     @fastapi_app.post("/run_neuro")
     async def upload_image(file: UploadFile = File(...)):
         """ Ручка для посылки изображения на обработку нейросетью """
-        # with open(f"uploads/{file.filename}", "wb") as buffer:
-        #     shutil.copyfileobj(file.file, buffer)
 
-        return {"filename": file.filename, "message": "Image uploaded successfully!"}
+        try:
+            file_path = os.path.join('uploads/', file.filename)
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+
+            return {
+                "filename": file.filename,
+                "result": "ok",
+                "message": "Image uploaded successfully!",
+                "image_url": f"/uploads/{file.filename}"  # URL для доступа к изображению
+            }
+
+        except Exception as e:
+            return {"filename": file.filename, "result": "error", "message": repr(e)}
 
     @fastapi_app.get("/upload")
     async def upload_image():
         """ Ручка для посылки изображения на обработку нейросетью """
-        # return FileResponse('../frontend/templates/v1.html')
+        _path = '../frontend/templates/v2.html'
         # _path = os.path.join(os.getcwd(), r'app\backend\frontend\templates\v1.html')
-        # logger.trace(f'path: {_path}')
-        return FileResponse('app/frontend/templates/v1.html')
+        # _path = 'app/frontend/templates/v1.html'
+        logger.trace(f'path: {_path}')
+        return FileResponse(_path)
 
     @fastapi_app.get("/config")
     async def config() -> Settings:

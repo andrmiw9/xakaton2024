@@ -21,3 +21,6 @@ utils/user_settings.py  # игнорируем настройки пользов
 
 # Не игнорировать config_example.toml
 !app/backend/configs/config_example.toml
+
+# Игнорировать загруженные во время тестов фотки
+app/backend/uploads/*
